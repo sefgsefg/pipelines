@@ -1,4 +1,4 @@
-name: KFP SDK execution tests
+name: GCPC modules test
 
 on:
   push:
@@ -6,13 +6,11 @@ on:
 
   pull_request:
     paths:
-      - '.github/workflows/sdk-execution.yml'
-      - 'scripts/deploy/github/**'
+      - '.github/workflows/gcpc-modules-tests.yml'
       - 'sdk/python/**'
-      - 'api/v2alpha1/**'
 
 jobs:
-  sdk-execution-tests:
+  all-gcpc-tests:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
@@ -22,19 +20,13 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.9
-
-      - name: Create KFP cluster
-        uses: ./.github/actions/kfp-cluster
-
-      - name: Forward API port
-        run: ./scripts/deploy/github/forward-port.sh "kubeflow" "ml-pipeline" 8888 8888
-
+      
       - name: apt-get update
         run: sudo apt-get update
 
       - name: Install protobuf-compiler
         run: sudo apt-get install protobuf-compiler -y
-
+      
       - name: Install setuptools
         run: | 
           pip3 install setuptools
@@ -42,23 +34,23 @@ jobs:
 
       - name: Install Wheel
         run: pip3 install wheel==0.42.0
-
-      - name: Install protobuf
-        run: pip3 install protobuf==4.25.3
+      
+      - name: Install python sdk 
+        run: pip install sdk/python
 
       - name: Generate API proto files
         working-directory: ./api
         run: make clean python
 
       - name: Install kfp-pipeline-spec from source
-        run: |
+        run: | 
           python3 -m pip install api/v2alpha1/python
 
-      - name: Install requirements
-        run: pip install -r ./test/sdk-execution-tests/requirements.txt
+      - name: Install google-cloud component 
+        run: pip install components/google-cloud
 
-      - name: Run tests
-        run: |
-          export KFP_ENDPOINT="http://localhost:8888"
-          export TIMEOUT_SECONDS=2700
-          pytest ./test/sdk-execution-tests/sdk_execution_tests.py --asyncio-task-timeout $TIMEOUT_SECONDS
+      - name: Install Pytest
+        run: pip install $(grep 'pytest==' sdk/python/requirements-dev.txt)
+
+      - name: Run test
+        run: pytest ./test/gcpc-tests/run_all_gcpc_modules.py
